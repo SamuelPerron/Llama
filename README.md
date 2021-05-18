@@ -1,5 +1,7 @@
 # Llama, a broker mock
 
+![tests](https://github.com/SamuelPerron/Llama/actions/workflows/tests.yml/badge.svg)
+
 ## Installation
 1. **Build docker environnment**
 
