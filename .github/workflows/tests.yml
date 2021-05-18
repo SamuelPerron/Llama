@@ -33,7 +33,7 @@ jobs:
         PGPASSWORD=somestrong psql --username=test_user --host=localhost --list test_llama
     - name: Test with pytest
       env:
-        ALPACA_UID: ${{ ALPACA_UID }}
-        ALPACA_SECRET: ${{ ALPACA_SECRET }}
+        ALPACA_UID: ${{ secrets.ALPACA_UID }}
+        ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
       run: |
         pytest
