@@ -32,5 +32,8 @@ jobs:
         sudo -u postgres createdb --owner=test_user test_llama
         PGPASSWORD=somestrong psql --username=test_user --host=localhost --list test_llama
     - name: Test with pytest
+      env:
+        ALPACA_UID: ${{ ALPACA_UID }}
+        ALPACA_SECRET: ${{ ALPACA_SECRET }}
       run: |
         pytest
