@@ -22,7 +22,8 @@ def create_app(env='production'):
 
     if env == 'production':
         app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-            'SQLALCHEMY_DATABASE_URI')
+            'SQLALCHEMY_DATABASE_URI', 'postgresql://postgres:example@db:5432/llama'
+        )
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
         CORS(app)
@@ -32,7 +33,8 @@ def create_app(env='production'):
     elif env == 'testing':
         app.config['TESTING'] = True
         app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-            'SQLALCHEMY_TEST_DATABASE_URI')
+            'SQLALCHEMY_TEST_DATABASE_URI', 'postgresql://postgres:example@db:5432/test_llama'
+        )
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
