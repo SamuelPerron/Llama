@@ -11,3 +11,4 @@ python-dotenv
 requests
 pytest
 factory_boy
+pre-commit
