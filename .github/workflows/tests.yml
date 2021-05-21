@@ -34,5 +34,6 @@ jobs:
         ALPACA_UID: ${{ secrets.ALPACA_UID }}
         ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
         ACCOUNT_ID: ${{ secrets.ACCOUNT_ID }}
+        ACOUNT_BASE_CASH: ${{ secrets.ACOUNT_BASE_CASH }}
       run: |
         pytest
