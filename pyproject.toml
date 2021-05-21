@@ -1,0 +1,59 @@
+[tool]
+
+    [tool.black]
+    line-length = 79
+    target_version = ['py38']
+    skip-string-normalization=true
+
+    [tool.isort]
+    filter_files = true
+    multi_line_output = 3
+    include_trailing_comma = true
+    force_grid_wrap = false
+    line_length = 79
+    skip = [".git"]
+    skip_glob = ["*/migrations/*.py"]
+    combine_as_imports = true
+    import_heading_stdlib = "Standard libraries"
+    import_heading_thirdparty = "Third party"
+    import_heading_localfolder = "Local"
+    default_section = "FIRSTPARTY"
+    sections = [
+        "FUTURE", "STDLIB", "THIRDPARTY",
+        "FIRSTPARTY", "LOCALFOLDER"
+    ]
+
+    [tool.coverage]
+        [tool.coverage.run]
+        branch = true
+
+        [tool.coverage.report]
+
+        # Regexes for lines to exclude from consideration
+        exclude_lines = [
+            # Have to re-enable the standard pragma
+            'pragma: no cover',
+            'noqa',
+
+            # Don't complain if tests don't hit defensive assertion code:
+            'raise AssertionError',
+            'raise NotImplementedError',
+
+            # Don't complain if non-runnable code isn't run:
+            'if 0:',
+            'if False:',
+            'if __name__ == .__main__.:'
+        ]
+
+        # omit migrations, tests and settings
+        omit = [
+            "*/migrations/*",
+        ]
+
+    [tool.pylint]
+        [tool.pylint.MASTER]
+        load-plugins="pylint_django,pylint_celery"
+
+        [tool.pylint.'MESSAGES CONTROL']
+        # We don't add docstrings all over the place and we trust black for indentation
+        disable="missing-module-docstring,missing-class-docstring,missing-function-docstring,bad-continuation"
