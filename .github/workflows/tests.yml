@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-  
+
 jobs:
   build:
 
@@ -33,5 +33,6 @@ jobs:
       env:
         ALPACA_UID: ${{ secrets.ALPACA_UID }}
         ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+        ACCOUNT_ID: ${{ secrets.ACCOUNT_ID }}
       run: |
         pytest
