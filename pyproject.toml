@@ -17,6 +17,19 @@
     import_heading_stdlib = "Standard libraries"
     import_heading_thirdparty = "Third party"
     import_heading_localfolder = "Local"
+    known_third_party = [
+        "requests",
+        "Flask-SQLAlchemy",
+        "Flask-Migrate",
+        "Flask-Testing",
+        "sqlalchemy-json",
+        "flask-cors",
+        "sqlalchemy-utils",
+        "python-dotenv",
+        "requests",
+        "pytest",
+        "factory_boy"
+    ]
     default_section = "FIRSTPARTY"
     sections = [
         "FUTURE", "STDLIB", "THIRDPARTY",
