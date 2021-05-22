@@ -1,17 +1,19 @@
-from flask_testing import TestCase
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 import os
 
-from ..import create_app, db
+from flask import Flask
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from flask_testing import TestCase
+
+from .. import create_app, db
 
 
 class BaseTestCase(TestCase):
     def create_app(self):
-        app = create_app('testing')
+        app = create_app("testing")
         self.db = db
-        
+        self.client = app.test_client()
+
         return app
 
     def setUp(self):
