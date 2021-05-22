@@ -30,7 +30,7 @@ def get_current_account(retry=0):
 
 def alpaca(method, url, params={}, data={}):
     base_url = 'https://paper-api.alpaca.markets/v2'
-    if 'bars' in url or 'last_quote' in url:
+    if 'bars' in url or 'last_quote' in url or 'last' in url:
         base_url = 'https://data.alpaca.markets/v1'
 
     headers = {

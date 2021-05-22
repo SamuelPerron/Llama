@@ -1,9 +1,12 @@
-from .factories import OrderFactory
-from ..serializers import OrderSerializer
-from .. import Order
-from ...base.tests import BaseTestCase
+# Local
 from ...account.tests.factories import AccountFactory
+from ...base import LONG
+from ...base.tests import BaseTestCase
 from ...position import Position
+from .. import Order
+from ..serializers import OrderSerializer
+from .factories import OrderFactory
+
 
 class TestOrderSerializers(BaseTestCase):
     def test_data(self):
@@ -14,17 +17,28 @@ class TestOrderSerializers(BaseTestCase):
         serializer = OrderSerializer(order, False)
 
         for item in (
-            'symbol', 'qty', 'stop_price', 
-            'side', 'order_type', 'status', 
-            'filled_at', 'cancelled_at',
+            'symbol',
+            'qty',
+            'stop_price',
+            'side',
+            'order_type',
+            'status',
+            'filled_at',
+            'cancelled_at',
         ):
             assert item in serializer.to_representation().keys()
 
         for method in serializer.custom_fields:
             try:
-                assert getattr(order, method)() == serializer.to_representation()[method]
+                assert (
+                    getattr(order, method)()
+                    == serializer.to_representation()[method]
+                )
             except TypeError:
-                assert getattr(order, method).id == serializer.to_representation()[method]
+                assert (
+                    getattr(order, method).id
+                    == serializer.to_representation()[method]
+                )
 
     def test_is_valid(self):
         """
@@ -36,9 +50,9 @@ class TestOrderSerializers(BaseTestCase):
         data = {
             'symbol': 'TSLA',
             'qty': 1,
-            'side': Position.LONG,
+            'side': LONG,
             'order_type': Order.MARKET,
-            'account': account.id
+            'account': account.id,
         }
         serializer = OrderSerializer(data, True)
 
@@ -56,7 +70,7 @@ class TestOrderSerializers(BaseTestCase):
 
         assert serializer.errors[0] == {
             'field': 'order_type',
-            'error': f'The chosen order_type is incorrect.'
+            'error': f'The chosen order_type is incorrect.',
         }
         assert type(serializer.instance) == dict
 
@@ -66,6 +80,6 @@ class TestOrderSerializers(BaseTestCase):
 
         assert serializer.errors[0] == {
             'field': 'side',
-            'error': f'The chosen side is incorrect.'
+            'error': f'The chosen side is incorrect.',
         }
         assert type(serializer.instance) == dict

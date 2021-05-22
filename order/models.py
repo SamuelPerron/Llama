@@ -1,14 +1,22 @@
-from .. import db
-from ..base import BaseDBModel
-from ..base.utils import bars
-from ..position import Position
-from sqlalchemy_utils.types.choice import ChoiceType
-from sqlalchemy.orm import relationship
+# Standard libraries
 from datetime import datetime
 
+from sqlalchemy.orm import relationship
+from sqlalchemy_utils.types.choice import ChoiceType
+
+# Local
+from .. import db
+from ..base import LONG, SHORT, SIDES, BaseDBModel
+from ..base.utils import bars
+from ..position import Position
 
 NOT_HOLDING_POSITION = 'Not holding position.'
 INSUFFICIENT_FUNDS = 'Insufficient funds.'
+
+
+class UnsupportedOrderType(Exception):
+    pass
+
 
 class Order(db.Model, BaseDBModel):
     __tablename__ = 'orders'
@@ -32,16 +40,14 @@ class Order(db.Model, BaseDBModel):
     )
 
     account_id = db.Column(
-        db.Integer, 
-        db.ForeignKey('accounts.id'), 
-        nullable=False
+        db.Integer, db.ForeignKey('accounts.id'), nullable=False
     )
     symbol = db.Column(db.String)
     qty = db.Column(db.Integer)
     needed_funds = db.Column(db.Float)
     filled_price = db.Column(db.Float)
     stop_price = db.Column(db.Float)
-    side = db.Column(ChoiceType(Position.SIDES))
+    side = db.Column(ChoiceType(SIDES))
     order_type = db.Column(ChoiceType(TYPES))
     status = db.Column(ChoiceType(STATUSES))
     filled_at = db.Column(db.DateTime)
@@ -49,88 +55,96 @@ class Order(db.Model, BaseDBModel):
     rejected_cause = db.Column(db.String)
 
     account = relationship(
-        'Account', 
-        foreign_keys='Order.account_id', 
-        backref='orders'
+        'Account', foreign_keys='Order.account_id', backref='orders'
     )
 
     def get_public_fields():
         return BaseDBModel.get_public_fields() + (
-            'symbol', 'qty', 'stop_price', 
-            'side', 'order_type', 'status', 
-            'filled_at', 'cancelled_at',
+            'symbol',
+            'qty',
+            'stop_price',
+            'side',
+            'order_type',
+            'status',
+            'filled_at',
+            'cancelled_at',
         )
 
     def fill(self):
         if self.status == Order.CANCELLED:
             return False
 
-        if self.side == Position.SHORT:
-            if self.symbol not in (p.symbol for p in self.account.positions):
-                self.status = Order.REJECTED
-                self.rejected_cause = NOT_HOLDING_POSITION
+        if self.order_type == Order.MARKET:
+            if self.side == SHORT:
+                if self.symbol not in (
+                    p.symbol for p in self.account.positions
+                ):
+                    self.status = Order.REJECTED
+                    self.rejected_cause = NOT_HOLDING_POSITION
+                    self.save_to_db()
+                    return False
+
+                current_price = self.get_current_price()
+                position = self.get_related_position()
+
+                if position.qty < self.qty:
+                    self.status = Order.REJECTED
+                    self.rejected_cause = NOT_HOLDING_POSITION
+                    self.save_to_db()
+                    return False
+
+                position.closed = True
+                position.save_to_db()
+
+                self.account.cash += current_price * self.qty
+                self.status = Order.FILLED
+                self.filled_at = datetime.now()
+                self.filled_price = current_price
                 self.save_to_db()
-                return False
 
-            current_price = self.get_current_price()
-            position = self.get_related_position()
+                if position.qty > self.qty:
+                    new_position = Position(
+                        account=self.account,
+                        symbol=self.symbol,
+                        qty=position.qty - self.qty,
+                        side=LONG,
+                        entry_price=position.entry_price,
+                    )
+                    new_position.save_to_db()
 
-            if position.qty < self.qty:
-                self.status = Order.REJECTED
-                self.rejected_cause = NOT_HOLDING_POSITION
-                self.save_to_db()
-                return False
+                return True
 
-            position.closed = True
-            position.save_to_db()
+            if self.side == LONG:
+                current_price = self.get_current_price()
+                account_equity = self.account.cash + self.needed_funds
+                total_price = current_price * self.qty
 
-            self.account.cash += (current_price * self.qty)
-            self.status = Order.FILLED
-            self.filled_at = datetime.now()
-            self.filled_price = current_price
-            self.save_to_db()
+                if account_equity < total_price:
+                    self.status = Order.REJECTED
+                    self.rejected_cause = INSUFFICIENT_FUNDS
+                    self.save_to_db()
+                    return False
 
-            if position.qty > self.qty:
-                new_position = Position(
+                self.account.cash += self.needed_funds
+                self.account.cash -= total_price
+                self.account.save_to_db()
+
+                position = Position(
                     account=self.account,
                     symbol=self.symbol,
-                    qty=position.qty - self.qty,
-                    side=Position.LONG,
-                    entry_price=position.entry_price
+                    qty=self.qty,
+                    side=self.side,
+                    entry_price=current_price,
                 )
-                new_position.save_to_db()
+                position.save_to_db()
 
-            return True
-
-        if self.side == Position.LONG:
-            current_price = self.get_current_price()
-            account_equity = self.account.cash + self.needed_funds
-            total_price = current_price * self.qty
-
-            if account_equity < total_price:
-                self.status = Order.REJECTED
-                self.rejected_cause = INSUFFICIENT_FUNDS
+                self.filled_price = current_price
+                self.filled_at = datetime.now()
+                self.status = Order.FILLED
                 self.save_to_db()
-                return False
- 
-            self.account.cash += self.needed_funds
-            self.account.cash -= total_price
-            self.account.save_to_db()
-            
-            position = Position(
-                account=self.account,
-                symbol=self.symbol,
-                qty=self.qty,
-                side=self.side,
-                entry_price=current_price
-            )
-            position.save_to_db()
+                return True
 
-            self.filled_price = current_price
-            self.filled_at = datetime.now()
-            self.status = Order.FILLED
-            self.save_to_db()
-            return True
+        raise UnsupportedOrderType
 
     def cancel(self):
         if self.status != Order.NEW:
@@ -144,21 +158,14 @@ class Order(db.Model, BaseDBModel):
 
     def get_related_position(self):
         return Position.query.filter_by(
-                account=self.account,
-                symbol=self.symbol,
-                side=Position.LONG,
-                closed=False
-            ).first()
+            account=self.account, symbol=self.symbol, side=LONG, closed=False
+        ).first()
 
     def get_current_price(self):
-        return bars(
-            [self.symbol], 
-            'minute', 
-            1
-        )[self.symbol][0]['c']
+        return bars([self.symbol], 'minute', 1)[self.symbol][0]['c']
 
     def save_to_db(self):
-        if self.id is None and self.side == Position.LONG:
+        if self.id is None and self.side == LONG:
             current_price = self.get_current_price()
 
             self.needed_funds = current_price * self.qty

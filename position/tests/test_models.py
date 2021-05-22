@@ -1,14 +1,34 @@
+# Local
+from ...base import LONG, SHORT
 from ...base.tests import BaseTestCase
+from ...order import Order
 from .factories import PositionFactory
 
 
 class TestPositionModels(BaseTestCase):
+    def test_close(self):
+        """
+        Checks that when closing a position, it creates the right order
+        """
+        position = PositionFactory()
+        base_order_count = len(Order.query.all())
+
+        position.close()
+
+        last_order = Order.query.all()[-1]
+        oposite_side = LONG if position.side == SHORT else SHORT
+
+        assert len(Order.query.all()) == (base_order_count + 1)
+        assert last_order.symbol == position.symbol
+        assert last_order.qty == position.qty
+        assert last_order.side == oposite_side
+
     def test_cost_basis(self):
         """
         Checks that cost_basis returns correct value
         """
         position = PositionFactory()
-        
+
         assert position.cost_basis() == position.qty * position.entry_price
 
     def test_market_value(self):
@@ -53,9 +73,9 @@ class TestPositionModels(BaseTestCase):
         """
         position = PositionFactory()
         cost_basis = position.cost_basis()
-        estimated = round((
-            position.unrealized_intraday_pl() - cost_basis
-        ) / cost_basis, 2)
+        estimated = round(
+            (position.unrealized_intraday_pl() - cost_basis) / cost_basis, 2
+        )
 
         assert round(position.unrealized_intraday_plpc(), 2) == estimated
 

@@ -1,24 +1,20 @@
-from .. import db
-from ..base import BaseDBModel
-from ..base.utils import alpaca, bars
-from sqlalchemy_utils.types.choice import ChoiceType
+# Standard libraries
+from datetime import datetime
+
 from sqlalchemy.orm import relationship
+from sqlalchemy_utils.types.choice import ChoiceType
+
+# Local
+from .. import db
+from ..base import LONG, SHORT, SIDES, BaseDBModel
+from ..base.utils import alpaca, bars
 
 
 class Position(db.Model, BaseDBModel):
     __tablename__ = 'positions'
 
-    LONG = 'long'
-    SHORT = 'short'
-    SIDES = (
-        (LONG, 'Long'),
-        (SHORT, 'Short'),
-    )
-
     account_id = db.Column(
-        db.Integer, 
-        db.ForeignKey('accounts.id'), 
-        nullable=False
+        db.Integer, db.ForeignKey('accounts.id'), nullable=False
     )
     symbol = db.Column(db.String)
     qty = db.Column(db.Integer)
@@ -26,11 +22,31 @@ class Position(db.Model, BaseDBModel):
     entry_price = db.Column(db.Float)
     closed = db.Column(db.Boolean, default=False)
 
+    _current_price = db.Column(db.Float)
+    _current_price_last_check = db.Column(db.DateTime)
+    _lastday_price = db.Column(db.Float)
+    _lastday_price_last_check = db.Column(db.DateTime)
+
     account = relationship(
-        'Account', 
-        foreign_keys='Position.account_id', 
-        backref='positions'
+        'Account', foreign_keys='Position.account_id', backref='positions'
     )
+
+    def close(self):
+        """
+        Creates a closing order
+        """
+        # Local
+        from ..order import Order
+
+        side = LONG if self.side == SHORT else SHORT
+        order = Order(
+            account=self.account,
+            symbol=self.symbol,
+            qty=self.qty,
+            order_type=Order.MARKET,
+            side=side,
+        )
+        order.save_to_db()
 
     def cost_basis(self):
         """
@@ -79,21 +95,42 @@ class Position(db.Model, BaseDBModel):
         """
         Current asset price per share
         """
-        return bars(
-            [self.symbol], 
-            'minute', 
-            1
-        )[self.symbol][0]['c']
+        DELAY_IN_SECONDS = 10
+        now = datetime.now()
+
+        if (
+            not self._current_price_last_check
+            or (now - self._current_price_last_check).total_seconds()
+            > DELAY_IN_SECONDS
+        ):
+            self._current_price_last_check = now
+
+            self._current_price = alpaca(
+                'get', f'last/stocks/{self.symbol}'
+            ).json()['last']['price']
+
+        return self._current_price
 
     def lastday_price(self):
         """
         Last day’s asset price per share based on the closing value of the last trading day
         """
-        data = bars((self.symbol,), 'day', limit=1)[self.symbol][0]
-        return self.current_price() - data['c']
+        now = datetime.now()
+
+        if (
+            not self._lastday_price_last_check
+            or now.date() != self._lastday_price_last_check.date()
+        ):
+            self._lastday_price_last_check = now
+
+            data = bars((self.symbol,), 'day', limit=1)[self.symbol][0]
+            self._lastday_price = self.current_price() - data['c']
+
+        return self._lastday_price
 
     def get_public_fields():
         return BaseDBModel.get_public_fields() + (
-            'symbol', 'qty', 'side',
+            'symbol',
+            'qty',
+            'side',
         )
-

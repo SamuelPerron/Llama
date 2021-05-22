@@ -1,12 +1,16 @@
 import factory
 import factory.fuzzy as fuzzy
 from faker import Faker
+
+# Local
 from ... import db
-from .. import Position
 from ...account.tests.factories import AccountFactory
+from ...base import SIDES
 from ...order.tests.factories import STOCK_SYMBOLS
+from .. import Position
 
 fake = Faker()
+
 
 class PositionFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
@@ -17,9 +21,5 @@ class PositionFactory(factory.alchemy.SQLAlchemyModelFactory):
     account = factory.SubFactory(AccountFactory)
     symbol = fuzzy.FuzzyChoice(STOCK_SYMBOLS)
     qty = fake.random_digit_not_null()
-    side = fuzzy.FuzzyChoice(
-        Position.SIDES, getter=lambda c: c[0]
-    )
+    side = fuzzy.FuzzyChoice(SIDES, getter=lambda c: c[0])
     entry_price = fake.pyfloat(positive=True, max_value=1200)
-
-    

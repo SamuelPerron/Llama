@@ -1,8 +1,21 @@
-from ...base.tests import BaseTestCase
+# Standard libraries
+from io import UnsupportedOperation
+
+# Third party
+import pytest
+
+# Local
 from ...account.tests.factories import AccountFactory
+from ...base import LONG, SHORT
+from ...base.tests import BaseTestCase
 from ...position import Position
+from ..models import (
+    INSUFFICIENT_FUNDS,
+    NOT_HOLDING_POSITION,
+    Order,
+    UnsupportedOrderType,
+)
 from .factories import OrderFactory
-from ..models import Order, NOT_HOLDING_POSITION, INSUFFICIENT_FUNDS
 
 
 class TestOrderModels(BaseTestCase):
@@ -13,7 +26,7 @@ class TestOrderModels(BaseTestCase):
         """
         account = AccountFactory()
         base_account_cash = account.cash
-        order = OrderFactory(side=Position.LONG, account=account)
+        order = OrderFactory(side=LONG, account=account)
         order.save_to_db()
         new_account_cash = account.cash
 
@@ -28,7 +41,7 @@ class TestOrderModels(BaseTestCase):
         account = AccountFactory()
         original_cash = account.cash
 
-        order = OrderFactory(account=account, side=Position.LONG)
+        order = OrderFactory(account=account, side=LONG)
         order.save_to_db()
 
         assert order in account.orders
@@ -38,7 +51,7 @@ class TestOrderModels(BaseTestCase):
         """
         This should reject the order for now
         """
-        order = OrderFactory(side=Position.SHORT)
+        order = OrderFactory(side=SHORT)
         order.save_to_db()
 
         assert order.fill() == False
@@ -48,12 +61,12 @@ class TestOrderModels(BaseTestCase):
     def test_fill_long_order(self):
         """
         This should remove the funds from the cash balance of the account
-        and create the right position 
+        and create the right position
         """
         account = AccountFactory(rich=True)
         original_cash = account.cash
 
-        order = OrderFactory(side=Position.LONG, account=account)
+        order = OrderFactory(side=LONG, account=account)
         order.save_to_db()
 
         assert order.fill() == True
@@ -71,33 +84,40 @@ class TestOrderModels(BaseTestCase):
         account = AccountFactory(poor=True)
         original_cash = account.cash
 
-        order = OrderFactory(side=Position.LONG, account=account)
+        order = OrderFactory(side=LONG, account=account)
         order.save_to_db()
 
         assert order.fill() == False
         assert order.status == Order.REJECTED
         assert order.rejected_cause == INSUFFICIENT_FUNDS
 
+    def test_fill_unsupported_order_type(self):
+        """
+        This shoud raise an error
+        """
+        order = OrderFactory(order_type=Order.STOP)
+        order.save_to_db()
+
+        with pytest.raises(UnsupportedOrderType):
+            order.fill()
+
     def test_fill_short_order(self):
         """
-        This should add the gain of the sale to the 
+        This should add the gain of the sale to the
         cash balance of the account and close the right position
         """
         account = AccountFactory(rich=True)
 
-        long = OrderFactory(account=account, side=Position.LONG)
+        long = OrderFactory(account=account, side=LONG)
         long.save_to_db()
         long.fill()
         original_cash = account.cash
 
         short = OrderFactory(
-            account=account,
-            side=Position.SHORT, 
-            symbol=long.symbol, 
-            qty=long.qty
+            account=account, side=SHORT, symbol=long.symbol, qty=long.qty
         )
         short.save_to_db()
-        
+
         assert short.fill() == True
         assert short.status == Order.FILLED
         assert account.cash == original_cash + (short.filled_price * short.qty)
@@ -110,8 +130,8 @@ class TestOrderModels(BaseTestCase):
         """
         account = AccountFactory()
         original_cash = account.cash
-        
-        order = OrderFactory(account=account, side=Position.LONG)
+
+        order = OrderFactory(account=account, side=LONG)
         order.save_to_db()
 
         assert order.cancel() == True
