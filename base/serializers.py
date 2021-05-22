@@ -1,8 +1,14 @@
+# Local
 from .. import db
-from .constants import DEFAULT_TIME_FORMAT, VARCHAR_TYPE, DATETIME_TYPE, STRING_TYPE
+from .constants import (
+    DATETIME_TYPE,
+    DEFAULT_TIME_FORMAT,
+    STRING_TYPE,
+    VARCHAR_TYPE,
+)
 
 
-class ValidationError(Exception):
+class ValidationError(BaseException):
     def __init__(self, errors):
         self.errors = errors
 
@@ -31,12 +37,14 @@ class ModelSerializer:
         if self.fields != '__all__':
             for field in self.fields:
                 if not hasattr(self.model, field):
-                    raise ValueError(f"Field `{field}` not in model.")
+                    raise ValueError(f'Field `{field}` not in model.')
 
     def _validate_custom_fields(self):
         for field in self.custom_fields:
-            if not hasattr(self, f'get_{field}') and not hasattr(self.model, field):
-                raise ValueError(f"Custom field `{field}` has no getter.")
+            if not hasattr(self, f'get_{field}') and not hasattr(
+                self.model, field
+            ):
+                raise ValueError(f'Custom field `{field}` has no getter.')
 
     def _compute_fields(self):
         if self.fields == '__all__':
@@ -45,7 +53,7 @@ class ModelSerializer:
     def _create_instance(self):
         final_instance = self.model()
         self.is_valid(final_instance)
-        
+
         if len(self.errors) == 0:
             final_instance.save_to_db()
             self.instance = final_instance
@@ -66,13 +74,16 @@ class ModelSerializer:
         representation = {
             attr: self._field_to_representation(
                 attr, getattr(self.instance, attr)
-            ) for attr in self.fields
+            )
+            for attr in self.fields
         }
 
-        representation.update({
-            field: self._get_custom_getter(field)()
-            for field in self.custom_fields
-        })
+        representation.update(
+            {
+                field: self._get_custom_getter(field)()
+                for field in self.custom_fields
+            }
+        )
 
         return representation
 
@@ -100,21 +111,25 @@ class ModelSerializer:
         if hasattr(self, f'valid_{attr}'):
             getattr(self, f'valid_{attr}')(value)
             return
-        
+
         try:
             attr_type = getattr(self.model, attr).property.columns[0].type
         except AttributeError:
-            self.errors.append({
-                'field': attr,
-                'error': f'Model does not have a field named `{attr}`.'
-            })
+            self.errors.append(
+                {
+                    'field': attr,
+                    'error': f'Model does not have a field named `{attr}`.',
+                }
+            )
             return
-        
+
         try:
             assert type(value) == attr_type.python_type
         except AssertionError:
-            self.errors.append({
-                'field': attr, 
-                'error': 'Incorrect type.',
-            })
+            self.errors.append(
+                {
+                    'field': attr,
+                    'error': 'Incorrect type.',
+                }
+            )
             return

@@ -1,6 +1,7 @@
 # Standard libraries
 from datetime import datetime
 
+# Third party
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils.types.choice import ChoiceType
 
@@ -14,7 +15,7 @@ NOT_HOLDING_POSITION = 'Not holding position.'
 INSUFFICIENT_FUNDS = 'Insufficient funds.'
 
 
-class UnsupportedOrderType(Exception):
+class UnsupportedOrderType(BaseException):
     pass
 
 

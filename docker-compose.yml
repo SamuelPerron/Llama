@@ -28,6 +28,15 @@ services:
     extra_hosts:
       - "dns:8.8.8.8"
 
+  celery:
+    build:
+      context: .
+    command: python -m celery -A celery_worker.celery worker
+    volumes:
+      - .:/llama
+    depends_on:
+      - "redis"
+
 volumes:
   llama-db: {}
   app: {}
