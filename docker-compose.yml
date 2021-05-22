@@ -25,6 +25,8 @@ services:
       FLASK_ENV: development
       FLASK_RUN_HOST: 0.0.0.0
       FLASK_DEBUG: 1
+    extra_hosts:
+      - "dns:8.8.8.8"
 
 volumes:
   llama-db: {}
