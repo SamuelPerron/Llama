@@ -28,6 +28,16 @@ services:
     extra_hosts:
       - "dns:8.8.8.8"
 
+  swagger:
+    image: "swaggerapi/swagger-ui"
+    expose:
+      - 8080
+    ports:
+      - "80:8080"
+    volumes:
+      - swagger-json:/llama
+
 volumes:
   llama-db: {}
   app: {}
+  swagger-json: {}
