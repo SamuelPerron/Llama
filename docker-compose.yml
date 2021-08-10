@@ -27,7 +27,12 @@ services:
       FLASK_DEBUG: 1
     extra_hosts:
       - "dns:8.8.8.8"
+    networks:
+      - api
 
 volumes:
   llama-db: {}
   app: {}
+
+networks:
+  api:
