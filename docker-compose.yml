@@ -10,9 +10,13 @@ services:
       - "5432:5432"
     volumes:
       - llama-db:/var/lib/postgresql/data
+    networks:
+      - api
 
   redis:
     image: "redis:alpine"
+    networks:
+      - api
 
   api:
     build:
