@@ -3,6 +3,7 @@ FROM python:3.7
 WORKDIR /llama
 
 ENV FLASK_APP=run.py
+ENV TZ="America/Toronto"
 
 RUN apt-get install gcc
 
